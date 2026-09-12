@@ -13,6 +13,7 @@ training:
   hidden_dim: 128
   hidden_layers: 3
   log_every: 200
+  history_every: 20
 
 evaluation:
   grid_size: 61
