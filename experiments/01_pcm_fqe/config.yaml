@@ -1,0 +1,27 @@
+seed: 1234
+
+domain:
+  re_min: -0.75
+  re_max: 0.75
+  im_min: -0.75
+  im_max: 0.75
+
+training:
+  steps: 4000
+  batch_size: 4096
+  learning_rate: 0.002
+  hidden_dim: 128
+  hidden_layers: 3
+  log_every: 200
+
+evaluation:
+  grid_size: 61
+  samples_per_lambda: 16
+  diagnostic_lambdas:
+    - [0.0, 0.0]
+    - [0.25, 0.0]
+    - [-0.25, 0.0]
+    - [0.0, 0.25]
+    - [0.50, 0.20]
+
+output_dir: results/01_pcm_fqe
