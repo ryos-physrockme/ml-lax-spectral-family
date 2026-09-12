@@ -1,3 +1,4 @@
+# Compile notes/research_note.tex on GitHub and keep the generated PDF in the repository.
 name: build research note PDF
 
 on:
