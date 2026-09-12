@@ -69,6 +69,9 @@ def main() -> None:
     ).to(device=device, dtype=torch.float64)
     optimizer = torch.optim.Adam(model.parameters(), lr=float(tcfg["learning_rate"]))
 
+    history_every = int(tcfg.get("history_every", tcfg["log_every"]))
+    history: list[dict[str, float | int]] = []
+
     for step in range(1, int(tcfg["steps"]) + 1):
         lam = sample_lambda(cfg, int(tcfg["batch_size"]), rng)
         batch = sample_offshell_batch(lam, rng)
@@ -87,6 +90,8 @@ def main() -> None:
         loss.backward()
         optimizer.step()
 
+        if step == 1 or step % history_every == 0 or step == int(tcfg["steps"]):
+            history.append({"step": step, "normalized_fqe_loss": float(loss.item())})
         if step == 1 or step % int(tcfg["log_every"]) == 0:
             print(f"step={step:6d} loss={loss.item():.6e}")
 
@@ -116,6 +121,7 @@ def main() -> None:
 
     diagnostic_entries = []
     diagnostic_q_exact = []
+    diagnostic_q_learned = []
     for re_lam, im_lam in ecfg["diagnostic_lambdas"]:
         lam = complex(re_lam, im_lam)
         xy = tensor_real(np.array([[lam.real, lam.imag]]), device)
@@ -123,6 +129,7 @@ def main() -> None:
             q_here = model(xy).cpu().numpy()[0]
         q_exact_here = exact_q_matrix(np.asarray(lam))
         diagnostic_q_exact.append(q_exact_here)
+        diagnostic_q_learned.append(q_here)
         diagnostic_entries.append(
             {
                 "lambda": [lam.real, lam.imag],
@@ -141,17 +148,20 @@ def main() -> None:
         "q_offdiagonal_fraction": q_offdiag,
         "q_diagonal_spread": q_diag_spread,
         "exact_stacked_rank_diagnostic_points": stacked_q_rank(np.asarray(diagnostic_q_exact)),
+        "learned_stacked_rank_diagnostic_points": stacked_q_rank(np.asarray(diagnostic_q_learned)),
         "diagnostic_points": diagnostic_entries,
     }
 
     out_dir = Path(cfg["output_dir"])
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "metrics.json").write_text(json.dumps(metrics, indent=2))
+    (out_dir / "history.json").write_text(json.dumps(history, indent=2))
     np.savez_compressed(
         out_dir / "q_grid.npz",
         lam=lam_grid,
         q_pred=q_pred,
         q_exact=q_exact,
+        grid_size=n_grid,
     )
     torch.save(model.state_dict(), out_dir / "q_net.pt")
 
