@@ -1,0 +1,46 @@
+name: build research note PDF
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'notes/research_note.tex'
+      - '.github/workflows/build-notes.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Compile research note with LuaLaTeX
+        uses: xu-cheng/latex-action@v4
+        with:
+          root_file: research_note.tex
+          working_directory: notes
+          latexmk_use_lualatex: true
+          texlive_version: 2026
+
+      - name: Upload compiled PDF
+        uses: actions/upload-artifact@v6
+        with:
+          name: research-note-pdf
+          path: notes/research_note.pdf
+
+      - name: Commit compiled PDF to repository
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add notes/research_note.pdf
+          if git diff --cached --quiet; then
+            echo "PDF is unchanged."
+          else
+            git commit -m "Build research note PDF [skip ci]"
+            git push
+          fi
