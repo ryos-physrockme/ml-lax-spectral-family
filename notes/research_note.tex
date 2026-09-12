@@ -1,0 +1,167 @@
+\documentclass[11pt,a4paper]{ltjsarticle}
+
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{geometry}
+\usepackage{hyperref}
+\geometry{margin=25mm}
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+
+\title{Spectral-Parameter Learning for Lax Connections\\研究ノート}
+\author{}
+\date{2026年9月13日}
+
+\begin{document}
+\maketitle
+
+\section{目的}
+
+本ノートは，既発表論文
+\begin{center}
+O.~Fukushima, T.~Shigemura, R.~Suda, N.~Tanahashi and K.~Yoshida,
+``Machine-Learning Search for Lax Connections,''
+\href{https://arxiv.org/abs/2608.05146}{arXiv:2608.05146}
+\end{center}
+の後続研究として，スペクトルパラメータを含む Lax connection の機械学習を整理するための作業ノートである．
+まず，共同研究者から共有された二つのノートに含まれる数値的・方法論的な取り組みを数え，既発表論文に既に含まれる内容と未発表の差分を区別する．その上で，再現計算と追加検証の予定を記録する．
+
+\section{比較対象と数え方}
+
+比較に用いる共同研究者ノートは次の二つである．
+\begin{enumerate}
+  \item N.~Tanahashi, ``Explicit Spectral-Parameter Learning in the PCM: Implementation Notes and Numerical Results,'' May 24, 2026.
+  \item N.~Tanahashi, ``Machine-Learning the Spectral Parameter for the $S^2$ Coset: Prior-Free Discovery, Tracing, and Charting of the Lax Family,'' June 9, 2026.
+\end{enumerate}
+
+取り組みの個数を恣意的に細分化しないため，PCM ノートについては同ノートが明示的に区別している三つの calculation scheme を一項目ずつ数え，$S^2$ ノートについては同ノートの Summary が明示的に区別している Discovery, Tracing, Charting の三段階を一項目ずつ数える．したがって，ここで比較する取り組みは合計六項目である．
+
+\section{共同研究者ノートに含まれる六つの取り組み}
+
+\subsection{PCM: Scheme A --- plain flatness loss}
+
+PCM の ansatz
+\begin{equation}
+L_+=a(\lambda)J_+,
+\qquad
+L_-=c(\lambda)J_-
+\end{equation}
+に対し，$\lambda$ に依存した追加の重み付けを行わず，bare flatness loss を用いる基準計算である．
+また，$a(\lambda)$ の扱いとして none, hard, soft の三つの learning mode を比較し，スペクトルパラメータの再パラメータ化自由度が最適化結果に与える影響を調べる．
+
+\subsection{PCM: Scheme B --- analytic per-$\lambda$ reweighting}
+
+hard mode で $a(\lambda)=\lambda$ を固定したときの勾配強度の $\lambda$ 依存性を解析し，
+\begin{equation}
+w(\lambda)\propto \left|\lambda-\frac12\right|^{-2}
+\end{equation}
+という解析的な per-$\lambda$ weight を導入する．目的は，スペクトルパラメータ領域内で不均一な training signal を補償することである．
+
+\subsection{PCM: Scheme C --- problem-agnostic normalization and adaptive $\lambda$ weighting}
+
+解析解や PCM 固有の勾配公式を用いずに training signal の不均一性を抑える方法を調べる．具体的には，flatness residual を構成する各項の norm を用いた component-norm normalization と，実行中の per-$\lambda$ loss の exponential moving average に基づく adaptive $\lambda$ weighting を組み合わせる．
+
+\subsection{$S^2$: Discovery --- Jacobian null-space analysis}
+
+$S^2=SU(2)/U(1)$ の線形 ansatz
+\begin{equation}
+L_+=aJ_+^{(0)}+bJ_+^{(1)},
+\qquad
+L_-=cJ_-^{(0)}+dJ_-^{(1)}
+\end{equation}
+について，flatness residual の Jacobian の null space を調べる．nullity から flatness solution set の局所次元を推定し，null vector の成分から動かない係数と family に沿って変化する係数を識別する．さらに，null-vector field と収束点 cloud から conserved relation を抽出し，$a=c=1$ と $bd=1$ を事前に仮定せずに再構成する．
+
+\subsection{$S^2$: Tracing --- pseudo-arclength continuation}
+
+Jacobian の null space で得られた局所 tangent direction を用いて predictor--corrector 型の pseudo-arclength continuation を行い，flatness solution manifold 上の連続な経路を追跡する．これは一複素次元の solution manifold 全体を二実次元領域として走査するものではなく，その内部の一実次元の continuation path を高精度に追う計算である．
+
+\subsection{$S^2$: Charting --- explicit spectral-parameter network}
+
+複素スペクトルパラメータを入力とする neural network
+\begin{equation}
+\mathcal N:\lambda\in\mathbb C\longmapsto
+(a(\lambda),b(\lambda),c(\lambda),d(\lambda))\in\mathbb C^4
+\end{equation}
+を学習し，flatness solution manifold の有限領域を一つの滑らかで微分可能な map として表現する．学習には component-norm flatness loss に加えて，$\lambda$ 非依存 map への collapse を防ぐ derivative term と，continuation で得た solution points を用いる anchor term を用いる．
+
+\section{arXiv:2608.05146 との差分}
+
+既発表論文では，PCM について $a(\lambda)=\lambda$ を固定して $c(\lambda)$ を neural network で学習する explicit spectral-parameter experiment と component-norm normalized flatness loss が既に含まれている．また $S^2$ については，$a,b,c,d$ の定数学習に加え，truncated Laurent ansatz によって explicit $\lambda$ dependence を学習し，$a=c=1$ および mutually inverse Laurent modes を回収している．したがって，「explicit spectral parameter を学習すること」自体は新しい差分ではない．
+
+\begin{longtable}{p{0.06\textwidth}p{0.28\textwidth}p{0.36\textwidth}p{0.20\textwidth}}
+\toprule
+No. & 共同研究者ノートの項目 & arXiv:2608.05146 との関係 & 差分の位置づけ \\
+\midrule
+1 & PCM Scheme A: plain flatness loss, none/hard/soft comparison
+& 既発表論文の explicit-$\lambda$ PCM 計算は hard fixing と component-norm normalization を用いる．bare loss を含む三 mode の系統比較は未掲載．
+& 基準計算・ablation としての差分 \\
+\addlinespace
+2 & PCM Scheme B: analytic per-$\lambda$ reweighting
+& $\lambda$ による勾配不均一性から解析的 weight を導く比較は未掲載．
+& 明確な方法論的差分 \\
+\addlinespace
+3 & PCM Scheme C: component-norm normalization + adaptive $\lambda$ weighting
+& component-norm normalization 自体は既発表論文に含まれるが，runtime loss に基づく adaptive $\lambda$ weighting と Scheme A/B との比較は未掲載．
+& 部分的な方法論的差分 \\
+\addlinespace
+4 & $S^2$ Discovery: Jacobian null-space analysis
+& 既発表論文は endpoint cloud と Laurent search から family を確認するが，flatness residual Jacobian の nullity と null vectors から family dimension と invariant を抽出する手順は含まない．
+& 明確な方法論的差分 \\
+\addlinespace
+5 & $S^2$ Tracing: pseudo-arclength continuation
+& solution manifold を tangent direction に沿って continuation する計算は未掲載．
+& 明確な方法論的差分 \\
+\addlinespace
+6 & $S^2$ Charting: neural-network chart
+& 既発表論文の explicit-$\lambda$ 表現は truncated Laurent ansatz であり，continuation points を anchor として用いる neural-network chart は未掲載．
+& 明確な方法論的差分 \\
+\bottomrule
+\end{longtable}
+
+\subsection{現時点での数え上げ}
+
+共同研究者ノートに含まれる取り組みは六項目である．広く「既発表論文にない setup, comparison, result」を差分と数えれば六項目すべてに未発表部分がある．ただし，新しい方法として区別すると，五項目が少なくとも一つの未発表 method element を含み，そのうち四項目は既発表論文から明確に切り分けられる方法論的差分である．PCM Scheme C は component-norm normalization を既発表論文から引き継ぐため部分的な差分であり，PCM Scheme A は主として基準計算と ablation の役割を持つ．
+
+この整理では，共同研究者ノートそのものに含まれていない off-shell factorization
+\begin{equation}
+F_{+-}=Q E
+\end{equation}
+とその rank diagnostic は上記六項目には数えていない．これは既発表論文で現れた genuine Lax と fake Lax の区別を，学習および数値診断の側に取り込むための追加研究項目として扱う．
+
+\section{今後の予定}
+
+\subsection{共同研究者ノートの再現}
+
+\subsubsection{PCM Scheme A: plain flatness loss と none/hard/soft mode の再現}
+
+\subsubsection{PCM Scheme B: analytic per-$\lambda$ reweighting の再現}
+
+\subsubsection{PCM Scheme C: component-norm normalization と adaptive $\lambda$ weighting の再現}
+
+\subsubsection{$S^2$ Discovery: Jacobian null-space analysis の再現}
+
+\subsubsection{$S^2$ Tracing: pseudo-arclength continuation の再現}
+
+\subsubsection{$S^2$ Charting: neural-network chart の再現}
+
+\subsection{既発表論文との差分を強める追加検証}
+
+\subsubsection{PCM における off-shell factorization $F_{+-}=Q E$ の学習}
+
+\subsubsection{$S^2$ における off-shell factorization $F_{+-}=Q E$ の学習}
+
+\subsubsection{fake Lax candidate に対する $Q$ の rank diagnostic}
+
+\subsubsection{複数のスペクトルパラメータを用いた stacked-rank diagnostic}
+
+\subsubsection{flatness solution manifold の tangent direction と Lax gauge orbit の分離}
+
+\subsubsection{spectral parameter の non-removability に対する数値診断}
+
+\subsubsection{Jacobian null-space analysis, continuation, spectral charting の統一 pipeline}
+
+\subsubsection{追加の既知可積分模型に対する benchmark}
+
+\subsubsection{learned Lax family からの monodromy と conserved quantities の検証}
+
+\end{document}
