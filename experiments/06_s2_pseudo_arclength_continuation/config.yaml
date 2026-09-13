@@ -20,7 +20,7 @@ continuation:
 
 corrector:
   optimizer: Adam
-  learning_rate: 0.01
-  steps: 30
+  learning_rate: 0.003
+  steps: 300
 
 output_dir: results/06_s2_pseudo_arclength_continuation
