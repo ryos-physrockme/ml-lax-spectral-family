@@ -60,7 +60,9 @@ The spectral parameter is sampled uniformly from
 -1\leq\operatorname{Im}\lambda\leq1,
 \]
 
-so the pole at `lambda = 1/2` lies outside the domain. The network has two hidden layers of width 64 with `tanh` activation and uses double precision. Each step samples 64 spectral-parameter values and 64 independent current pairs for each value.
+so the pole at `lambda = 1/2` lies outside the domain. The network has two hidden layers of width 64 with `tanh` activation and uses double precision.
+
+At the beginning of a run, 64 spectral-parameter values are sampled from this rectangle and kept fixed during the 10000 training steps. For every step and for every spectral-parameter value, 64 independent current pairs are freshly sampled. This choice makes the exponential moving average in the adaptive method a well-defined history for each indexed spectral-parameter value. The collaborator note states that the spectral parameter is sampled uniformly and defines an exponential moving average for indexed values `lambda_n`, but it does not explicitly state whether the spectral-parameter sample itself is redrawn at every optimization step. The fixed-sample convention used here is therefore an implementation choice, not a fact inferred from the note.
 
 The optimizer is Adam. The learning rate warms linearly to `2e-3` during the first 150 steps and then follows cosine annealing to `2e-5` at 10000 steps.
 
