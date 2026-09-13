@@ -1,0 +1,19 @@
+seed: 1234
+
+landing:
+  n_initializations: 256
+  n_samples: 2048
+  steps: 800
+  learning_rate: 0.03
+  initialization_scale: 0.8
+  convergence_threshold: 1.0e-8
+  denominator_epsilon: 1.0e-10
+  theta_margin: 0.35
+  log_every: 100
+
+jacobian:
+  n_samples: 16384
+  theta_margin: 0.35
+  small_singular_value_threshold: 1.0e-8
+
+output_dir: results/05_s2_jacobian_family_discovery
