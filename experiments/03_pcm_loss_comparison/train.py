@@ -114,6 +114,18 @@ def main() -> None:
     history_every = int(tcfg["history_every"])
     history: list[dict] = []
 
+    # The adaptive prescription carries an exponential moving average indexed by
+    # lambda_n.  We therefore sample the n_lambda spectral parameters once and
+    # keep them fixed throughout a run; field configurations are resampled at
+    # every step.  The collaborator note does not state the lambda resampling
+    # cadence explicitly, so this implementation choice is recorded in the
+    # accompanying README and research note.
+    lam_np = sample_lambda(cfg, n_lambda, rng)
+    lam_xy = torch.as_tensor(
+        np.column_stack([lam_np.real, lam_np.imag]), dtype=torch.float64, device=device
+    )
+    lam = torch.as_tensor(lam_np, dtype=torch.complex128, device=device)
+
     acfg = cfg["adaptive_weighting"]
     ema_alpha = float(acfg["exponential_moving_average_alpha"])
     clip_ratio = float(acfg["clipping_ratio"])
@@ -123,6 +135,7 @@ def main() -> None:
 
     output_dir = Path(cfg["output_root"]) / method
     output_dir.mkdir(parents=True, exist_ok=True)
+    np.save(output_dir / "training_lambda.npy", lam_np)
 
     for step in range(1, total_steps + 1):
         lr = learning_rate(
@@ -135,11 +148,6 @@ def main() -> None:
         for group in optimizer.param_groups:
             group["lr"] = lr
 
-        lam_np = sample_lambda(cfg, n_lambda, rng)
-        lam_xy = torch.as_tensor(
-            np.column_stack([lam_np.real, lam_np.imag]), dtype=torch.float64, device=device
-        )
-        lam = torch.as_tensor(lam_np, dtype=torch.complex128, device=device)
         a = lam
         c = model(lam_xy)[..., 0, 0]
 
