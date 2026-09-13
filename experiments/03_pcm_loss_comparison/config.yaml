@@ -1,0 +1,34 @@
+seed: 1234
+
+domain:
+  re_min: -2.0
+  re_max: 0.0
+  im_min: -1.0
+  im_max: 1.0
+
+training:
+  steps: 10000
+  n_lambda: 64
+  n_field_samples: 64
+  peak_learning_rate: 0.002
+  minimum_learning_rate: 0.00002
+  warmup_steps: 150
+  hidden_dim: 64
+  hidden_layers: 2
+  log_every: 250
+  history_every: 50
+  checkpoint_steps:
+    - 3000
+    - 10000
+
+adaptive_weighting:
+  exponential_moving_average_alpha: 0.9
+  clipping_ratio: 3.0
+  warmup_steps: 100
+  denominator_epsilon: 1.0e-10
+
+evaluation:
+  grid_size: 200
+  real_axis_points: 400
+
+output_root: results/03_pcm_loss_comparison
