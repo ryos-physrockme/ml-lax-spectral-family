@@ -33,11 +33,17 @@ jobs:
       - name: Run unit tests
         run: pytest
 
-      - name: Land random initializations and analyze the flatness Jacobian
+      - name: Land random initializations and compute the flatness Jacobian
         run: |
           python experiments/05_s2_jacobian_family_discovery/train.py \
             --config experiments/05_s2_jacobian_family_discovery/config.yaml \
             --device cpu
+
+      - name: Convert normalized-Jacobian null vectors back to coefficient coordinates
+        run: |
+          python experiments/05_s2_jacobian_family_discovery/reanalyze.py \
+            --config experiments/05_s2_jacobian_family_discovery/config.yaml \
+            --results results/05_s2_jacobian_family_discovery
 
       - name: Generate discovery figures
         run: |
