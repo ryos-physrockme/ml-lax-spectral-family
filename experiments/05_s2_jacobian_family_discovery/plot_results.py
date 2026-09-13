@@ -22,6 +22,10 @@ def save(path: Path) -> None:
     plt.close()
 
 
+def complex_pair(z: complex) -> list[float]:
+    return [float(np.real(z)), float(np.imag(z))]
+
+
 def main() -> None:
     args = parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
@@ -29,12 +33,14 @@ def main() -> None:
     data = np.load(args.results / "discovery_data.npz")
 
     final_losses = data["final_losses"]
-    converged_mask = data["converged_mask"].astype(bool)
-    converged = data["converged"]
     singular_values = data["singular_values"]
     invariant_matrix = data["invariant_matrix"]
     exponents = data["invariant_exponents"]
     product = data["product"]
+    if "points_for_cloud" in data.files:
+        cloud = data["points_for_cloud"]
+    else:
+        cloud = data["converged"]
 
     plt.figure(figsize=(7.0, 4.4))
     values = np.log10(np.maximum(final_losses, 1.0e-40))
@@ -71,8 +77,8 @@ def main() -> None:
     plt.grid(True, alpha=0.25)
     save(args.output / "null_tangent_invariant_relation.png")
 
-    log_b = np.log(np.abs(converged[:, 1]))
-    log_d = np.log(np.abs(converged[:, 3]))
+    log_b = np.log(np.abs(cloud[:, 1]))
+    log_d = np.log(np.abs(cloud[:, 3]))
     slope = summary["log_abs_d_vs_log_abs_b_slope"]
     intercept = float(np.mean(log_d - slope * log_b))
     xx = np.linspace(np.min(log_b), np.max(log_b), 200)
@@ -86,8 +92,8 @@ def main() -> None:
     plt.grid(True, alpha=0.25)
     save(args.output / "coefficient_cloud_log_modulus.png")
 
-    arg_b = np.angle(converged[:, 1])
-    arg_d = np.angle(converged[:, 3])
+    arg_b = np.angle(cloud[:, 1])
+    arg_d = np.angle(cloud[:, 3])
     phase_slope = summary["arg_d_vs_arg_b_slope"]
     phase_intercept = float(np.mean(arg_d - phase_slope * arg_b))
     xx = np.linspace(np.min(arg_b), np.max(arg_b), 200)
@@ -111,6 +117,22 @@ def main() -> None:
     plt.grid(True, alpha=0.25)
     save(args.output / "product_bd.png")
 
+    # Store one learned point near |b|=1 for the continuation experiment.
+    # The selection criterion uses only the learned coefficients, not the
+    # analytic relation a=c=1, bd=1.
+    seed_index = int(np.argmin(np.abs(np.abs(cloud[:, 1]) - 1.0)))
+    seed_point = cloud[seed_index]
+    seed_payload = {
+        "provenance": "Experiment 05: converged point selected by minimizing ||b|-1| among points with a two-dimensional real Jacobian null space.",
+        "selection_does_not_use_known_flat_family_equations": True,
+        "a": complex_pair(seed_point[0]),
+        "b": complex_pair(seed_point[1]),
+        "c": complex_pair(seed_point[2]),
+        "d": complex_pair(seed_point[3]),
+        "abs_b": float(np.abs(seed_point[1])),
+    }
+    (args.output / "continuation_seed.json").write_text(json.dumps(seed_payload, indent=2))
+
     lines = [
         "# Experiment 05: S2 flat-family discovery from the Jacobian null space",
         "",
@@ -118,6 +140,7 @@ def main() -> None:
         "",
         f"- Random initializations: {summary['n_initializations']}",
         f"- Converged initializations: {summary['n_converged']}",
+        f"- Points used for the tangent-invariant analysis: {summary.get('n_points_used_for_tangent_invariant', summary['n_converged'])}",
         f"- Landing batch size: {summary['landing_batch_size']}",
         f"- Jacobian diagnostic batch size: {summary['jacobian_batch_size']}",
         f"- Nullity histogram: {summary['nullity_histogram']}",
@@ -132,12 +155,15 @@ def main() -> None:
         f"- Slope arg(d) versus arg(b): {summary['arg_d_vs_arg_b_slope']:.6f}",
         f"- Maximum |bd-1|: {summary['max_abs_product_minus_one']:.6e}",
         f"- Sampled family coverage in |b|: {summary['b_abs_min']:.4f} to {summary['b_abs_max']:.4f}",
+        f"- Continuation seed chosen from the learned cloud: |b|={seed_payload['abs_b']:.6f}",
         "",
         "## Collaborator-note reference",
         "",
         "The collaborator note used 256 random initializations on a fixed batch of 16384 on-shell samples and retained 243 converged points. It reported nullity two at every retained point, a Jacobian singular-value gap of about 1e13--1e15, frozen a and c directions, invariant exponents (1,1), slopes -1 for both modulus and phase relations, and bd=1 to about 5e-6.",
         "",
         "The landing optimizer and its hyperparameters are not specified in the available note. This reproduction therefore uses a smaller landing batch and an explicitly documented Adam optimization, while keeping the Jacobian diagnostic batch at 16384 samples. Agreement should be judged by the recovered manifold dimension and algebraic structure, not by the exact number of converged initializations.",
+        "",
+        "The singular-value decomposition is performed after unit-normalizing the Jacobian columns for conditioning. Before interpreting a null vector as a coefficient-space tangent, this implementation divides its components by the corresponding original column norms. Without this inverse rescaling, the tangent relation and the inferred invariant are distorted by the conditioning transformation.",
     ]
     (args.output / "summary.md").write_text("\n".join(lines) + "\n")
 
