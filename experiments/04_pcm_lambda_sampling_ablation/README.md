@@ -2,9 +2,9 @@
 
 ## Question
 
-The adaptive loss in the collaborator note keeps an exponential moving average of the loss associated with sampled spectral-parameter values. The note specifies that the spectral parameter is sampled uniformly, but it does not state whether the sampled spectral-parameter batch is kept fixed across optimization steps or redrawn at every step.
+The adaptive loss in the collaborator note keeps an exponential moving average of the loss associated with sampled spectral-parameter values. The note specifies uniform sampling of the spectral parameter and lists `--n-lambda 64` as the “Number of lambda samples per step”. This wording suggests that the spectral-parameter sample may be redrawn during optimization, but the note does not explicitly state the redraw rule. At the same time, the adaptive prescription labels its exponential moving average by `lambda_n`, which has the clearest pointwise interpretation when `lambda_n` denotes a persistent spectral-parameter value.
 
-This experiment measures whether that implementation choice changes the comparison among the three loss constructions studied in Experiment 03.
+This experiment therefore does not silently choose between those readings. It measures both conventions and records whether the comparison among the three loss constructions depends on that implementation detail.
 
 ## Common physical setup
 
@@ -59,9 +59,9 @@ For the adaptive loss, the exponential moving average attached to batch index `n
 
 A new set of 64 complex spectral-parameter values is drawn at every optimization step. Field-current samples are also redrawn.
 
-For the adaptive loss, the exponential moving average attached to batch index `n` is then not the history of one fixed point in the spectral-parameter plane: the value of `lambda_n` changes between steps. This convention is included because it is a natural alternative reading of “sample lambda uniformly”, and because it approximately reproduces the numerical ordering reported in the collaborator note in an earlier implementation.
+For the adaptive loss, the exponential moving average attached to batch index `n` is then not the history of one fixed point in the spectral-parameter plane: the value of `lambda_n` changes between steps. The moving average is consequently an average attached to a batch slot rather than to a fixed spectral point.
 
-It should not be interpreted as the known convention of the collaborator code. The available note does not determine that point.
+The phrase “64 spectral-parameter samples per step” in the collaborator note makes this convention plausible, but it is not sufficient to establish the implementation of the original code. The ablation is therefore a test of an unresolved implementation detail, not a claim that either convention is the collaborator’s actual code.
 
 ## Compared losses
 
