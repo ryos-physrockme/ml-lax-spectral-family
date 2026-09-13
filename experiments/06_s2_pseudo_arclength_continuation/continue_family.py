@@ -82,28 +82,49 @@ def correct_prediction(
     predicted_real: np.ndarray,
     corrector_data,
     epsilon: float,
+    target_loss: float,
     learning_rate: float,
     steps: int,
     device: torch.device,
-) -> tuple[np.ndarray, float, float]:
+) -> tuple[np.ndarray, float, float, int]:
+    """Minimize flatness from a predictor and stop as soon as tolerance is met.
+
+    Adam uses parameter-normalized steps even when the gradient is already very
+    small. Running a fixed number of steps can therefore move an already
+    acceptable predictor away from the flat manifold. We evaluate the loss
+    before every optimizer step, return immediately once the requested
+    tolerance is reached, and otherwise retain the best iterate seen.
+    """
+
     raw_np = np.stack([predicted_real[:4], predicted_real[4:]], axis=-1)
     raw = torch.nn.Parameter(torch.as_tensor(raw_np, dtype=torch.float64, device=device))
     optimizer = torch.optim.Adam([raw], lr=learning_rate)
 
-    for _ in range(steps):
+    best_loss = float("inf")
+    best_raw = raw.detach().clone()
+    best_step = 0
+
+    for corrector_step in range(steps + 1):
         parameters = torch.complex(raw[:, 0], raw[:, 1])[None, :]
         loss = discovery.component_normalized_loss(parameters, corrector_data, epsilon)[0]
+        loss_value = float(loss.detach().cpu())
+
+        if loss_value < best_loss:
+            best_loss = loss_value
+            best_raw = raw.detach().clone()
+            best_step = corrector_step
+
+        if loss_value <= target_loss or corrector_step == steps:
+            break
+
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         optimizer.step()
 
-    parameters = torch.complex(raw[:, 0], raw[:, 1])[None, :]
-    final_loss = float(discovery.component_normalized_loss(parameters, corrector_data, epsilon)[0].detach().cpu())
-    corrected = np.concatenate(
-        [raw[:, 0].detach().cpu().numpy(), raw[:, 1].detach().cpu().numpy()]
-    )
+    best_np = best_raw.cpu().numpy()
+    corrected = np.concatenate([best_np[:, 0], best_np[:, 1]])
     correction_norm = float(np.linalg.norm(corrected - predicted_real))
-    return corrected, final_loss, correction_norm
+    return corrected, best_loss, correction_norm, best_step
 
 
 def trace_direction(
@@ -135,7 +156,15 @@ def trace_direction(
     records: list[dict] = []
     signed_arclength = 0.0
 
-    def make_record(step: int, point_real: np.ndarray, loss: float, step_length: float, correction: float, singular_values: np.ndarray) -> dict:
+    def make_record(
+        step: int,
+        point_real: np.ndarray,
+        loss: float,
+        step_length: float,
+        correction: float,
+        corrector_steps: int,
+        singular_values: np.ndarray,
+    ) -> dict:
         point = real_to_complex_coordinates(point_real)
         return {
             "direction": int(direction_sign),
@@ -144,6 +173,7 @@ def trace_direction(
             "step_length": float(step_length),
             "component_normalized_loss": float(loss),
             "correction_norm": float(correction),
+            "corrector_steps": int(corrector_steps),
             "a": [float(point[0].real), float(point[0].imag)],
             "b": [float(point[1].real), float(point[1].imag)],
             "c": [float(point[2].real), float(point[2].imag)],
@@ -156,7 +186,7 @@ def trace_direction(
 
     start_tensor = torch.as_tensor(start_point[None, :], dtype=torch.complex128, device=device)
     start_loss = float(discovery.component_normalized_loss(start_tensor, corrector_data, epsilon)[0].detach().cpu())
-    records.append(make_record(0, current, start_loss, 0.0, 0.0, svals))
+    records.append(make_record(0, current, start_loss, 0.0, 0.0, 0, svals))
 
     for step in range(1, max_steps + 1):
         current_point = real_to_complex_coordinates(current)
@@ -174,12 +204,14 @@ def trace_direction(
 
         accepted = False
         trial_h = h
+        corrector_steps_used = 0
         for _ in range(max_retries):
             predicted = current + trial_h * tangent
-            corrected, loss, correction_norm = correct_prediction(
+            corrected, loss, correction_norm, corrector_steps_used = correct_prediction(
                 predicted,
                 corrector_data,
                 epsilon,
+                accepted_threshold,
                 float(ocfg["learning_rate"]),
                 int(ocfg["steps"]),
                 device,
@@ -210,12 +242,23 @@ def trace_direction(
         if np.dot(tangent_after, tangent) < 0.0:
             tangent_after = -tangent_after
         tangent = tangent_after
-        records.append(make_record(step, current, loss, trial_h, correction_norm, svals_after))
+        records.append(
+            make_record(
+                step,
+                current,
+                loss,
+                trial_h,
+                correction_norm,
+                corrector_steps_used,
+                svals_after,
+            )
+        )
 
         if step % 50 == 0:
             print(
                 f"direction={direction_sign:+d} step={step:4d} |b|={abs(corrected_point[1]):.6f} "
-                f"|d|={abs(corrected_point[3]):.6f} loss={loss:.3e} h={trial_h:.3e}"
+                f"|d|={abs(corrected_point[3]):.6f} loss={loss:.3e} h={trial_h:.3e} "
+                f"corrector_steps={corrector_steps_used}"
             )
 
     return records
@@ -272,6 +315,7 @@ def main() -> None:
     a_values = np.asarray([cplx(row, "a") for row in combined])
     c_values = np.asarray([cplx(row, "c") for row in combined])
     losses = np.asarray([row["component_normalized_loss"] for row in combined])
+    corrector_steps = np.asarray([row["corrector_steps"] for row in combined])
 
     summary = {
         "seed_provenance": seed_payload["provenance"],
@@ -286,6 +330,8 @@ def main() -> None:
         "max_abs_a_minus_one": float(np.max(np.abs(a_values - 1.0))),
         "max_abs_c_minus_one": float(np.max(np.abs(c_values - 1.0))),
         "max_abs_bd_minus_one": float(np.max(np.abs(b_values * d_values - 1.0))),
+        "max_corrector_steps_used": int(np.max(corrector_steps)),
+        "median_corrector_steps_used": float(np.median(corrector_steps)),
         "minimum_jacobian_s6_over_s7": float(
             min(
                 row["jacobian_singular_values"][5]
