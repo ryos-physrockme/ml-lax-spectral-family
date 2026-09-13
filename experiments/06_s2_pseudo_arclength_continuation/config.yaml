@@ -1,0 +1,26 @@
+seed: 1234
+
+input_seed: figures/05_s2_jacobian_family_discovery/continuation_seed.json
+
+sampling:
+  corrector_samples: 2048
+  jacobian_samples: 4096
+  theta_margin: 0.35
+
+continuation:
+  initial_step_length: 0.05
+  minimum_step_length: 0.002
+  maximum_step_length: 0.08
+  maximum_steps_each_direction: 500
+  maximum_retries_each_step: 8
+  target_abs_b_min: 0.08
+  target_abs_b_max: 12.0
+  accepted_loss_threshold: 1.0e-10
+  denominator_epsilon: 1.0e-10
+
+corrector:
+  optimizer: Adam
+  learning_rate: 0.01
+  steps: 30
+
+output_dir: results/06_s2_pseudo_arclength_continuation
