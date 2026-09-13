@@ -1,0 +1,9 @@
+{
+  "provenance": "Experiment 05: corrected Jacobian-null-space analysis. The point is selected from the converged coefficient cloud by minimizing ||b|-1| among points with a two-dimensional real Jacobian null space.",
+  "selection_does_not_use_known_flat_family_equations": true,
+  "a": [1.0000000000001856, 1.4026754240346513e-13],
+  "b": [-1.0000791677879604, -0.04897356147287806],
+  "c": [1.000000000000202, 1.3211472323020592e-13],
+  "d": [-0.9975287260891567, 0.04884866740706645],
+  "abs_b": 1.0012775621163468
+}
