@@ -6,7 +6,7 @@ landing:
   steps: 800
   learning_rate: 0.03
   initialization_scale: 0.8
-  convergence_threshold: 1.0e-8
+  convergence_threshold: 1.0e-9
   denominator_epsilon: 1.0e-10
   theta_margin: 0.35
   log_every: 100
