@@ -1,0 +1,42 @@
+seed: 1234
+
+input_trace: results/06_s2_pseudo_arclength_continuation/trace.json
+
+sampling:
+  flatness_samples: 768
+  evaluation_flatness_samples: 1536
+  theta_margin: 0.35
+  denominator_epsilon: 1.0e-10
+
+network:
+  hidden_dim: 192
+  hidden_layers: 3
+
+chart_domain:
+  transverse_min: -1.0
+  transverse_max: 1.0
+  evaluation_s_points: 81
+  evaluation_t_points: 31
+
+anchors:
+  n_points: 96
+  batch_size: 48
+
+training:
+  steps: 4500
+  latent_batch_size: 64
+  learning_rate: 0.001
+  log_every: 100
+  flatness_weight: 1.0
+  anchor_weight: 25.0
+  derivative_norm_weight: 0.10
+  rank_weight: 0.20
+  minimum_sine_squared: 0.20
+
+variants:
+  - name: derivative_norm_baseline
+    use_rank_penalty: false
+  - name: jacobian_rank_aware
+    use_rank_penalty: true
+
+output_dir: results/07_s2_neural_chart

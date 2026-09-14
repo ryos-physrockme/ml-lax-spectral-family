@@ -1,22 +1,23 @@
-name: experiment 06 - S2 pseudo-arclength continuation
+name: experiment 07 - S2 neural chart
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
+      - 'experiments/07_s2_neural_chart/**'
       - 'experiments/06_s2_pseudo_arclength_continuation/**'
+      - 'experiments/05_s2_jacobian_family_discovery/**'
       - 'figures/05_s2_jacobian_family_discovery/continuation_seed.json'
-      - 'experiments/05_s2_jacobian_family_discovery/train.py'
-      - '.github/workflows/run-experiment-06.yml'
+      - '.github/workflows/run-experiment-07.yml'
 
 permissions:
   contents: write
 
 jobs:
-  continue-family:
+  train-chart:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -35,36 +36,43 @@ jobs:
       - name: Run unit tests
         run: pytest
 
-      - name: Trace the flat-connection family in both radial directions
+      - name: Regenerate the one-dimensional continuation path used as anchors
         run: |
           python experiments/06_s2_pseudo_arclength_continuation/continue_family.py \
             --config experiments/06_s2_pseudo_arclength_continuation/config.yaml \
             --device cpu
 
-      - name: Generate continuation figures
+      - name: Train the two neural-chart variants
         run: |
-          python experiments/06_s2_pseudo_arclength_continuation/plot_results.py \
-            --results results/06_s2_pseudo_arclength_continuation \
-            --output figures/06_s2_pseudo_arclength_continuation
+          python experiments/07_s2_neural_chart/train.py \
+            --config experiments/07_s2_neural_chart/config.yaml \
+            --device cpu
+
+      - name: Generate chart figures
+        run: |
+          python experiments/07_s2_neural_chart/plot_results.py \
+            --results results/07_s2_neural_chart \
+            --output figures/07_s2_neural_chart
 
       - name: Upload complete numerical output
         uses: actions/upload-artifact@v6
         with:
-          name: experiment-06-s2-pseudo-arclength-continuation
+          name: experiment-07-s2-neural-chart
           path: |
             results/06_s2_pseudo_arclength_continuation
-            figures/06_s2_pseudo_arclength_continuation
+            results/07_s2_neural_chart
+            figures/07_s2_neural_chart
 
-      - name: Commit figures and numerical summary
+      - name: Commit figures
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add figures/06_s2_pseudo_arclength_continuation
+          git add figures/07_s2_neural_chart
           if git diff --cached --quiet; then
             echo "Figures are unchanged."
           else
-            git commit -m "Add S2 continuation figures [skip ci]"
+            git commit -m "Add S2 neural-chart figures [skip ci]"
           fi
           git pull --rebase origin main
           git push
