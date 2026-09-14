@@ -2,16 +2,16 @@
 
 The starting point is a converged coefficient vector produced by Experiment 05. The continuation code never substitutes the analytic equations a=c=1 or bd=1 into the predictor, tangent calculation, or corrector.
 
-- Total corrected points: 1
-- Points toward increasing |b|, including the start: 1
-- Points toward decreasing |b|, including the start: 1
-- Coverage in |b|: 1.001278 to 1.001278
-- Coverage in |d|: 0.998724 to 0.998724
-- Maximum component-normalized flatness residual: 1.627348e-17
-- Maximum |a-1|: 2.326655e-13
-- Maximum |c-1|: 2.414183e-13
-- Maximum |bd-1|: 8.555993e-09
-- Minimum Jacobian spectral gap s6/s7 along the stored path: 1.903546e+12
+- Total corrected points: 461
+- Points toward increasing |b|, including the start: 226
+- Points toward decreasing |b|, including the start: 236
+- Coverage in |b|: 0.079843 to 12.041551
+- Coverage in |d|: 0.083044 to 12.524212
+- Maximum component-normalized flatness residual: 9.985550e-11
+- Maximum |a-1|: 2.286260e-05
+- Maximum |c-1|: 1.827969e-05
+- Maximum |bd-1|: 4.374041e-05
+- Minimum Jacobian spectral gap s6/s7 along the stored path: 4.389357e+04
 
 ## Interpretation
 
