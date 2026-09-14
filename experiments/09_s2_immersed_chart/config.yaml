@@ -1,0 +1,48 @@
+seed: 1234
+
+input_trace: results/06_s2_pseudo_arclength_continuation/trace.json
+
+sampling:
+  flatness_samples: 2048
+  validation_flatness_samples: 2048
+  evaluation_flatness_samples: 4096
+  jacobian_samples: 4096
+  theta_margin: 0.35
+  denominator_epsilon: 1.0e-10
+
+network:
+  hidden_dim: 192
+  hidden_layers: 3
+
+chart_domain:
+  transverse_min: -0.50
+  transverse_max: 0.50
+  evaluation_s_points: 81
+  evaluation_t_points: 41
+
+anchors:
+  n_points: 96
+  batch_size: 48
+
+training:
+  steps: 6000
+  latent_batch_size: 64
+  validation_latent_points: 128
+  learning_rate: 0.0003
+  log_every: 100
+  flatness_weight: 100.0
+  anchor_weight: 25.0
+  frame_weight: 2.0
+  rank_ratio_weight: 0.10
+  rank_ratio_minimum: 0.10
+  singular_value_floor_weight: 0.10
+  singular_value_floor: 0.05
+  transverse_curriculum:
+    - until_step: 1500
+      half_width: 0.05
+    - until_step: 3000
+      half_width: 0.15
+    - until_step: 6000
+      half_width: 0.50
+
+output_dir: results/09_s2_immersed_chart

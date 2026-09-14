@@ -1,0 +1,80 @@
+name: experiment 09 - S2 immersed chart
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'experiments/09_s2_immersed_chart/**'
+      - 'experiments/08_s2_transverse_tangent/**'
+      - 'experiments/07_s2_neural_chart/**'
+      - 'experiments/06_s2_pseudo_arclength_continuation/**'
+      - 'experiments/05_s2_jacobian_family_discovery/**'
+      - 'figures/05_s2_jacobian_family_discovery/continuation_seed.json'
+      - '.github/workflows/run-experiment-09.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  train-immersed-chart:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install package and plotting dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[train,dev]'
+
+      - name: Run unit tests
+        run: pytest
+
+      - name: Regenerate the continuation path used as anchors
+        run: |
+          python experiments/06_s2_pseudo_arclength_continuation/continue_family.py \
+            --config experiments/06_s2_pseudo_arclength_continuation/config.yaml \
+            --device cpu
+
+      - name: Train and select the immersed chart
+        run: |
+          python experiments/09_s2_immersed_chart/train.py \
+            --config experiments/09_s2_immersed_chart/config.yaml \
+            --device cpu
+
+      - name: Generate figures
+        run: |
+          python experiments/09_s2_immersed_chart/plot_results.py \
+            --results results/09_s2_immersed_chart \
+            --output figures/09_s2_immersed_chart
+
+      - name: Upload complete numerical output
+        uses: actions/upload-artifact@v6
+        with:
+          name: experiment-09-s2-immersed-chart
+          path: |
+            results/06_s2_pseudo_arclength_continuation
+            results/09_s2_immersed_chart
+            figures/09_s2_immersed_chart
+
+      - name: Commit figures
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add figures/09_s2_immersed_chart
+          if git diff --cached --quiet; then
+            echo "Figures are unchanged."
+          else
+            git commit -m "Add S2 immersed-chart figures [skip ci]"
+          fi
+          git pull --rebase origin main
+          git push
